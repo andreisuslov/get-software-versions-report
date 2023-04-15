@@ -1,21 +1,19 @@
-$JsonReportPath = "./report.json"
-$HtmlReportPath = "./report.html"
-$AppsJsonFilePath = "./apps.json"
+$jsonReportPath = "./report.json"
+$htmlReportPath = "./report.html"
+$appsJsonFilePath = "./apps.json"
 
-function Empty-File {
-    param([string]$FilePath)
-    $FileExists = Check-IfFileExists $FilePath
-    if ($FileExists) {
-        Set-Content $FilePath -Value ""
+function emptyFile($filePath) {
+    $fileExists = checkIfFileExists $filePath
+    if ($fileExists) {
+        set-content $filePath -value ""
     }
     else {
-        Write-Error "${FilePath} file not found."
+        write-error "${filePath} file not found."
     }
 }
 
-function Check-IfFileExists {
-    param([string]$FilePath)
-    if (Test-Path $FilePath) {
+function checkIfFileExists($filePath) {
+    if (test-path $filePath) {
         return $true
     }
     else {
@@ -23,289 +21,274 @@ function Check-IfFileExists {
     }
 }
 
-function Create-NewFile {
-    param([string]$FilePath)
-    $FileExists = Check-IfFileExists $FilePath
-    if ($FileExists) { return }
-    $File = New-Item -ItemType File -Path $FilePath
-    return $File
-}
-
-function Write-ToFile {
-    param([string]$Path, [string]$Value)
-    $FileExists = Check-IfFileExists $Path
-    if ($FileExists) {
-        Out-File -FilePath $Path -InputObject $Value -Encoding utf8
+function writeToFile($path, $value) {
+    $fileExists = checkIfFileExists $path
+    if ($fileExists) {
+        out-file -filePath $path -inputObject $value -encoding utf8
     }
     else {
-        Write-Error "${Path} file not found."
+        write-error "${path} file not found."
     }
 }
 
-function Get-FileContent {
-    param([string]$FilePath)
-    $FileExists = Check-IfFileExists $FilePath
-    if ($FileExists) {
-        $FileContent = Get-Content -Path $FilePath -Raw
-        return $FileContent
+function getFileContent($filePath) {
+    $fileExists = checkIfFileExists $filePath
+    if ($fileExists) {
+        $fileContent = get-content -path $filePath -raw
+        return $fileContent
     }
     else {
-        Write-Error "${FilePath} file not found."
+        write-error "${filePath} file not found."
     }
 }
 
-function Get-ExecutableVersion {
-    param([parameter(Mandatory = $true)][string]$ExecutablePath)
-    if (Test-Path -Path $ExecutablePath) {
-        $VersionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($ExecutablePath)
-        $ProductVersionRaw = $VersionInfo.ProductMajorPart, $VersionInfo.ProductMinorPart, $VersionInfo.ProductBuildPart, $VersionInfo.ProductPrivatePart -join "."
-        return $ProductVersionRaw
+function getExecutableVersion {
+    param([parameter(mandatory = $true)][string]$executablePath)
+    if (Test-Path -Path $executablePath) {
+        $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($executablePath)
+        $productVersionRaw = $versionInfo.ProductMajorPart, $versionInfo.ProductMinorPart, $versionInfo.ProductBuildPart, $versionInfo.ProductPrivatePart -join "."
+        return $productVersionRaw
     }
     else {
         return "N/A"
     }
 }
 
-function Get-AppsJsonFileContent {
-    $AppsJsonFileContent = Get-FileContent $AppsJsonFilePath
-    return $AppsJsonFileContent
+function getAppsJsonFileContent() {
+    $appsJsonFileContent = getFileContent $appsJsonFilePath
+    return $appsJsonFileContent
 }
 
-
-function Get-Names {
-    $AppsInfo = Get-AppsJsonFileContent
-    $AppsObj = ConvertFrom-Json $AppsInfo
-    return $AppsObj.psObject.properties.name
+function getNames() {
+    $appsInfo = getAppsJsonFileContent
+    $appsObj = convertFrom-json $appsInfo
+    return $appsObj.psObject.properties.name
 }
 
-function Get-Paths {
-    $AppsInfo = Get-AppsJsonFileContent
-    $AppsObj = ConvertFrom-Json $AppsInfo
-    return $AppsObj.psObject.properties.value
+function getPaths() {
+    $appsInfo = getAppsJsonFileContent
+    $appsObj = convertFrom-json $appsInfo
+    return $appsObj.psObject.properties.value
 }
 
-function Get-Versions {
-    $AppPaths = Get-Paths
-    $Versions = @()
-    foreach ($AppPath in $AppPaths) {
-        $Version = Get-ExecutableVersion -ExecutablePath $AppPath
-        $Versions += $Version
+function getVersions() {
+    $appPaths = getPaths
+    $versions = @()
+    foreach ($appPath in $appPaths) {
+        $version = getExecutableVersion -executablePath $appPath
+        $versions += $version
     }
-    return $Versions
+    return $versions
 }
 
-function Get-Apps {
-    $Apps = @()
-    $Names = Get-Names
-    $Versions = Get-Versions
-    for ($i = 0; $i -lt $Names.Count; $i++) {
-        $Apps += [PSCustomObject]@{
-            Name    = $Names[$i]
-            Version = $Versions[$i]
+function getApps() {
+    $apps = @()
+    $names = getNames
+    $versions = getVersions
+    for ($i = 0; $i -lt $names.count; $i++) {
+        $apps += [PSCustomObject]@{
+            name    = $names[$i]
+            version = $versions[$i]
         }
     }
-    return $Apps
+    return $apps
 }
 
-function Get-NamesToVersionsJsonMap {
-    $Map = [ordered]@{}
-    $Apps = Get-Apps
-    foreach ($Product in $Apps) {
-        $Map[$Product.Name] = $Product.Version
+function getNamesToVersionsJsonMap() {
+    $map = [ordered]@{}
+    $apps = getApps
+    foreach ($product in $apps) {
+        $map[$product.name] = $product.version
     }
-    $Map | ConvertTo-Json
+    $map | ConvertTo-Json
 }
 
-function Generate-NodeSoftwareInventoryItem {
-    $HostName = HostName
-    $NamesToVersionsMap = (Get-NamesToVersionsJsonMap | ConvertFrom-Json)
-    $Output = @{
-        $HostName = $NamesToVersionsMap
+
+function createNewFile($filePath) {
+    $fileExists = checkIfFileExists $filePath
+    if ($fileExists) { return }
+    $file = new-item -itemType file -path $filePath
+    return $file
+}
+function generateNodeSoftwareInventoryItem() {
+    $hostName = hostName
+    $namesToVersionsMap = (getNamesToVersionsJsonMap | convertFrom-json)
+    $output = @{
+        $hostName = $namesToVersionsMap
     }
-    return $Output
+    return $output
 }
 
-function Get-InventoryItemNodeName {
-    param([hashtable]$Item)
-    $NodeName = $Item.psObject.properties.name # get the key of the hashtable
-    return $NodeName
+function getInventoryItemNodeName([hashtable]$item) {
+    $nodeName = $item.psObject.properties.name # get the key of the hashtable
+    return $nodeName
 }
 
-function Add-ItemToJsonReport {
-    param([hashtable]$Item)
-    $Report = Get-Content -Path $JsonReportPath -Raw # remove | ConvertFrom-Json -AsHashtable
-    $Hashtable = @{}
-    (ConvertFrom-Json $Report).psobject.properties | ForEach { $Hashtable[$_.Name] = $_.Value } # convert the JSON report to a hashtable
-    $Report = $Hashtable
-    if (-not $Report) {
-        $Report = @{}
+function addItemToJsonReport([hashtable]$item) {
+    $report = Get-Content -Path $jsonReportPath -Raw # remove | ConvertFrom-Json -AsHashtable
+    $hashtable = @{}
+    (ConvertFrom-Json $report).psobject.properties | Foreach { $hashtable[$_.Name] = $_.Value } # convert the JSON report to a hashtable
+    $report = $hashtable 
+    if (-not $report) {
+        $report = @{}
     } # if the JSON report is empty, initialize it as an empty hashtable
-    foreach ($Key in $Item.Keys) {
+    foreach ($key in $item.Keys) {
         # if the node already exists in the JSON report, don't add it again
-        if (-not $Report.ContainsKey($Key)) {
-            $Report[$Key] = $Item[$Key]
+        if (-not $report.ContainsKey($key)) {
+            $report[$key] = $item[$key]
         }
     }
-    $UpdatedJsonReport = ConvertTo-Json $Report -Depth 100
-    Out-File -FilePath $JsonReportPath -InputObject $UpdatedJsonReport -Encoding utf8
+    $updatedJsonReport = ConvertTo-Json $report -Depth 100
+    Out-File -FilePath $jsonReportPath -InputObject $updatedJsonReport -Encoding utf8
 }
 
-function Get-JsonReportFileContent {
-    $Content = Get-Content $JsonReportPath | ConvertFrom-Json
-    $SortedContent = [ordered]@{}
-    foreach ($NodeName in ($Content.psObject.properties.name | Sort-Object)) {
-        $SortedContent[$NodeName] = $Content.$NodeName
+function getJsonReportFileContent {
+    $content = Get-Content $jsonReportPath | ConvertFrom-Json
+    $sortedContent = [ordered]@{}
+    foreach ($nodeName in ($content.psObject.properties.name | sort-object)) {
+        $sortedContent[$nodeName] = $content.$nodeName
     }
-    $PsCustomObject = New-Object -TypeName PsCustomObject -Property $SortedContent
-    return $PsCustomObject | ConvertTo-Json -Depth 100
+    $psCustomObject = new-object -typeName psCustomObject -property $sortedContent
+    return $psCustomObject | ConvertTo-Json -Depth 100
 }
 
-function Clear-JsonReportFileContent {
-    Empty-File $JsonReportPath
+function clearJsonReportFileContent() {
+    emptyFile $jsonReportPath
 }
 
-function Get-HtmlStyles {
+function getHtmlStyles() {
     return @"
     table {
         border-collapse: collapse;
         width: auto;
         font-family: Arial, sans-serif;
     }
-
+    
     th {
         border: 1px solid rgb(183, 182, 182);
         text-align: left;
         padding: 8px;
     }
-
+    
     td {
         border: 1px solid rgb(224, 223, 223);
         text-align: left;
         padding: 8px;
     }
-
+    
     th {
         background-color: #f2f2f2;
         font-weight: bold;
     }
-
+    
     tr:nth-child(even) {
         background-color: #e7e7e7;
-    }
+    }    
 "@
 }
 
-function Get-HostNames {
-    param($Data)
-    $HostNames = $Data.psObject.properties.name
-    return $HostNames
+function getHostNames($data) {
+    $hostNames = $data.psObject.properties.name
+    return $hostNames
 }
 
-function Generate-HtmlTableHeader {
-    param($Data)
-    $Header = ""
-    $HostNames = Get-HostNames $Data
-    foreach ($HostName in $HostNames) {
-        $Header += "<th>$HostName</th>"
+function generateHtmlTableHeader($data) {
+    $header = ""
+    $hostNames = getHostNames $data
+    foreach ($hostName in $hostNames) {
+        $header += "<th>$hostName</th>"
     }
-    return $Header
+    return $header
 }
 
-function Get-UniqueAppNames {
-    param($Data)
-    $UniqueApps = @{}
-    $HostNames = Get-HostNames $Data
-    foreach ($HostName in $HostNames) {
-        $AppNames = $Data.$HostName.psObject.properties.name
-        foreach ($AppName in $AppNames) {
-            $UniqueApps[$AppName] = $true # use a hashtable to get unique app names
+function getUniqueAppNames ($data) {
+    $uniqueApps = @{}
+    $hostNames = getHostNames $data
+    foreach ($hostName in $hostNames) {
+        $appNames = $data.$hostName.psObject.properties.name
+        foreach ($appName in $appNames) {
+            $uniqueApps[$appName] = $true # use a hashtable to get unique app names
         }
     }
-    $UniqueAppNames = $UniqueApps.Keys
-    $UniqueAppNamesSorted = $UniqueAppNames | Sort-Object
-    return $UniqueAppNamesSorted
+    $uniqueAppNames = $uniqueApps.keys
+    $uniqueAppNamesSorted = $uniqueAppNames | sort-object
+    return $uniqueAppNamesSorted
 }
 
-function Create-VersionCell {
-    param($Data, $HostName, $AppName)
-    $Version = $Data.$HostName.$AppName
-    if ($null -eq $Version) {
-        $Version = "N/A"
+function createVersionCell ($data, $hostName, $appName) {
+    $version = $data.$hostName.$appName
+    if ($null -eq $version) {
+        $version = "N/A"
     }
-    return "<td>$Version</td>"
+    return "<td>$version</td>"
 }
 
-function Create-AppRow {
-    param($Data, $AppName)
-    $Row = "<tr><th>$AppName</th>"
-    $HostNames = Get-HostNames $Data
-    foreach ($HostName in $HostNames) {
-        $Row += (Create-VersionCell $Data $HostName $AppName)
+function createAppRow ($data, $appName) {
+    $row = "<tr><th>$appName</th>"
+    $hostNames = getHostNames $data
+    foreach ($hostName in $hostNames) {
+        $row += (createVersionCell $data $hostName $appName)
     }
-    $Row += "</tr>"
-    return $Row
+    $row += "</tr>"
+    return $row
 }
 
-function Generate-HtmlTableRows {
-    param($Data)
-    $Rows = ""
-    $AppNames = Get-UniqueAppNames $Data
-    foreach ($AppName in $AppNames) {
-        $Rows += (Create-AppRow $Data $AppName)
+function generateHtmlTableRows ($data) {
+    $rows = ""
+    $appNames = getUniqueAppNames $data
+    foreach ($appName in $appNames) {
+        $rows += (createAppRow $data $appName)
     }
-    return $Rows
+    return $rows
 }
 
-function Create-HtmlHead {
+function createHtmlHead() {
     return @"
 <head>
     <title>"Software Inventory Report"</title>
     <style>
-    $(Get-HtmlStyles)
+    $(getHtmlStyles)
     </style>
 </head>
 "@
 }
 
-function Create-HtmlTable {
-    param($Data)
+function createHtmlTable ($data) {
     return @"
 <table>
     <tr>
         <th>Software Products / Host Names</th>
-        $(Generate-HtmlTableHeader $Data)
+        $(generateHtmlTableHeader $data)
     </tr>
-    $(Generate-HtmlTableRows $Data)
+    $(generateHtmlTableRows $data)
 </table>
 "@
 }
 
-function Create-FullHtmlDocument {
-    param($Data)
-    $Html = @"
+function createFullHtmlDocument($data) {
+    $html = @"
 <!DOCTYPE html>
 <html>
-    $(Create-HtmlHead)
+    $(createHtmlHead)
 <body>
-    $(Create-HtmlTable $Data)
+    $(createHtmlTable $data)
 </body>
 </html>
 "@
-    return $Html
+    return $html
 }
 
-function Create-SoftwareInventoryHtmlReport {
-    param([string]$JsonReportFileContent, [string]$HtmlReportPath = "./report.html")
-    $Data = $JsonReportFileContent | ConvertFrom-Json
-    $Html = Create-FullHtmlDocument $Data
-    Write-ToFile $HtmlReportPath $Html
+function createSoftwareInventoryHtmlReport([string]$jsonReportFileContent, [string]$htmlReportPath = "./report.html") {
+    $data = $jsonReportFileContent | ConvertFrom-Json
+    $html = createFullHtmlDocument $data
+    writeToFile $htmlReportPath $html
 }
 
-function Get-HtmlReportFileContent {
-    $HtmlReportFileContent = Get-FileContent $HtmlReportPath
-    return $HtmlReportFileContent
+function getHtmlReportFileContent() {
+    $htmlReportFileContent = getFileContent $htmlReportPath
+    return $htmlReportFileContent
 }
 
-function Clear-HtmlReportFileContent {
-    Empty-File $HtmlReportPath
+function clearHtmlReportFileContent {
+    emptyFile $htmlReportPath
 }
