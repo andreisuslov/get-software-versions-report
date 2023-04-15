@@ -1,7 +1,5 @@
-Import-Module .\functions.ps1
-
-Clear-JsonReportFileContent
-Clear-HtmlReportFileContent
+clearJsonReportFileContent
+clearHtmlReportFileContent
 
 $a = @{
     "us18739asuslov" = @{
@@ -24,10 +22,10 @@ $c = @{
     }
 }
 
-Add-ItemToJsonReport $a
-Add-ItemToJsonReport $b
-Add-ItemToJsonReport $c
+addInventoryItemToJsonReport $a
+addInventoryItemToJsonReport $b
+addInventoryItemToJsonReport $c
 
-$JsonReportFileContent = Get-JsonReportFileContent
-Create-SoftwareInventoryHtmlReport $JsonReportFileContent
-Get-HtmlReportFileContent
+$jsonReportFileContent = getJsonReportFileContent
+createSoftwareInventoryHtmlReport $jsonReportFileContent
+getHtmlReportFileContent
